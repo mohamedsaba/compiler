@@ -65,7 +65,12 @@ public class Parser {
         ASTNode expr = parseExpr();
         consume(TokenType.SEMICOLON);
 
-        ASTNode node = new ASTNode(NodeType.ASSIGN);
+        ASTNode node = new ASTNode(NodeType.ASSIGN) {
+            @Override
+            public void print(String indent) {
+
+            }
+        };
         node.value = name.lexeme;
         node.children.add(expr);
         return node;
@@ -77,7 +82,12 @@ public class Parser {
         ASTNode expr = parseExpr();
         consume(TokenType.SEMICOLON);
 
-        ASTNode node = new ASTNode(NodeType.UNARY);
+        ASTNode node = new ASTNode(NodeType.UNARY) {
+            @Override
+            public void print(String indent) {
+
+            }
+        };
         node.value = "print";
         node.children.add(expr);
         return node;
@@ -89,10 +99,20 @@ public class Parser {
         Token name = consume(TokenType.IDENT);
         consume(TokenType.SEMICOLON);
 
-        ASTNode var = new ASTNode(NodeType.VARIABLE);
+        ASTNode var = new ASTNode(NodeType.VARIABLE) {
+            @Override
+            public void print(String indent) {
+
+            }
+        };
         var.value = name.lexeme;
 
-        ASTNode node = new ASTNode(NodeType.UNARY);
+        ASTNode node = new ASTNode(NodeType.UNARY) {
+            @Override
+            public void print(String indent) {
+
+            }
+        };
         node.value = "read";
         node.children.add(var);
         return node;
@@ -106,7 +126,12 @@ public class Parser {
             pos++;
             ASTNode right = parseTerm();
 
-            ASTNode node = new ASTNode(NodeType.BINARY);
+            ASTNode node = new ASTNode(NodeType.BINARY) {
+                @Override
+                public void print(String indent) {
+
+                }
+            };
             node.value = op;
             node.children.add(left);
             node.children.add(right);
@@ -123,7 +148,12 @@ public class Parser {
             pos++;
             ASTNode right = parseFactor();
 
-            ASTNode node = new ASTNode(NodeType.BINARY);
+            ASTNode node = new ASTNode(NodeType.BINARY) {
+                @Override
+                public void print(String indent) {
+
+                }
+            };
             node.value = op;
             node.children.add(left);
             node.children.add(right);
@@ -138,14 +168,24 @@ public class Parser {
 
         if (check(TokenType.NUMBER)) {
             pos++;
-            ASTNode node = new ASTNode(NodeType.LITERAL);
+            ASTNode node = new ASTNode(NodeType.LITERAL) {
+                @Override
+                public void print(String indent) {
+
+                }
+            };
             node.value = (Double) t.literal;
             return node;
         }
 
         if (check(TokenType.IDENT)) {
             pos++;
-            ASTNode node = new ASTNode(NodeType.VARIABLE);
+            ASTNode node = new ASTNode(NodeType.VARIABLE) {
+                @Override
+                public void print(String indent) {
+
+                }
+            };
             node.value = t.lexeme;
             return node;
         }
