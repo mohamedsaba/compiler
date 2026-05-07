@@ -11,17 +11,19 @@ import java.util.Scanner;
 public class Interpreter {
 
     // =============================================
-    // Symbol Table: بتخزن المتغيرات وقيمها
-    // مثال: x=10, y=20
+    // Symbol Table
     // =============================================
     private final Map<String, Double> symbolTable = new HashMap<>();
 
-    // Scanner عشان نقرأ من المستخدم في حالة read
-    private final Scanner scanner = new Scanner(System.in);
+    // Scanner for read
+    private final Scanner scanner;
+
+    public Interpreter(Scanner scanner) {
+        this.scanner = scanner;
+    }
 
     // =============================================
-    // نقطة الدخول الرئيسية
-    // بتاخد List<ASTNode> (البرنامج كامل)
+    // interpret
     // =============================================
     public void interpret(List<ASTNode> statements) {
         for (ASTNode statement : statements) {
@@ -30,73 +32,56 @@ public class Interpreter {
     }
 
     // =============================================
-    // execute: بتنفذ أي statement
-    // مش بترجع قيمة (void)
+    // execute
     // =============================================
     private void execute(ASTNode node) {
-        if (node instanceof AssignNode) {
-            executeAssign((AssignNode) node);
-
-        } else if (node instanceof PrintNode) {
-            executePrint((PrintNode) node);
-
-        } else if (node instanceof ReadNode) {
-            executeRead((ReadNode) node);
-
+        if (node.type == NodeType.ASSIGN) {
+            executeAssign(node);
+        } else if (node.type == NodeType.UNARY && "print".equals(node.value)) {
+            executePrint(node);
+        } else if (node.type == NodeType.UNARY && "read".equals(node.value)) {
+            executeRead(node);
         } else {
-            throw new RuntimeError("Unknown statement type: " + node.getClass().getSimpleName());
+            throw new RuntimeError("Unknown statement type: " + node.type);
         }
     }
 
     // =============================================
-    // evaluate: بتحسب قيمة أي expression
-    // بترجع Double
+    // evaluate
     // =============================================
     private double evaluate(ASTNode node) {
-
-        // رقم مباشر: مثال 42
-        if (node instanceof NumberNode) {
-            return ((NumberNode) node).value;
+        if (node.type == NodeType.LITERAL) {
+            return (Double) node.value;
         }
 
-        // متغير: مثال x
-        if (node instanceof VariableNode) {
-            String name = ((VariableNode) node).name;
+        if (node.type == NodeType.VARIABLE) {
+            String name = (String) node.value;
             if (!symbolTable.containsKey(name)) {
                 throw new RuntimeError("Undefined variable: '" + name + "'");
             }
             return symbolTable.get(name);
         }
 
-        // عملية حسابية: مثال x + 5، a * b
-        if (node instanceof BinaryOp) {
-            return evaluateBinaryOp((BinaryOp) node);
+        if (node.type == NodeType.BINARY) {
+            return evaluateBinaryOp(node);
         }
 
-        // عملية سالبة: مثال -x
-        if (node instanceof UnaryOpNode) {
-            return evaluateUnaryOp((UnaryOpNode) node);
+        if (node.type == NodeType.UNARY && ("-".equals(node.value) || "+".equals(node.value))) {
+            return evaluateUnaryOp(node);
         }
 
-        throw new RuntimeError("Cannot evaluate node: " + node.getClass().getSimpleName());
+        throw new RuntimeError("Cannot evaluate node of type: " + node.type);
     }
 
-    // =============================================
-    // تنفيذ الـ Assignment: x := 10
-    // =============================================
-    private void executeAssign(AssignNode node) {
-        double value = evaluate(node.expression);
-        symbolTable.put(node.variableName, value);
-        // Debug (اختياري): System.out.println("[DEBUG] " + node.variableName + " = " + value);
+    private void executeAssign(ASTNode node) {
+        String varName = (String) node.value;
+        double value = evaluate(node.children.get(0));
+        symbolTable.put(varName, value);
     }
 
-    // =============================================
-    // تنفيذ الـ Print: print x
-    // =============================================
-    private void executePrint(PrintNode node) {
-        double value = evaluate(node.expression);
+    private void executePrint(ASTNode node) {
+        double value = evaluate(node.children.get(0));
 
-        // لو الرقم integer اطبعه من غير فاصلة
         if (value == Math.floor(value) && !Double.isInfinite(value)) {
             System.out.println((long) value);
         } else {
@@ -104,28 +89,24 @@ public class Interpreter {
         }
     }
 
-    // =============================================
-    // تنفيذ الـ Read: read x
-    // بيقرأ من المستخدم ويخزن في المتغير
-    // =============================================
-    private void executeRead(ReadNode node) {
-        System.out.print("Enter value for " + node.variableName + ": ");
+    private void executeRead(ASTNode node) {
+        ASTNode varNode = node.children.get(0);
+        String varName = (String) varNode.value;
+        System.out.print("Enter value for " + varName + ": ");
         try {
             double value = Double.parseDouble(scanner.nextLine().trim());
-            symbolTable.put(node.variableName, value);
+            symbolTable.put(varName, value);
         } catch (NumberFormatException e) {
-            throw new RuntimeError("Invalid number entered for variable: " + node.variableName);
+            throw new RuntimeError("Invalid number entered for variable: " + varName);
         }
     }
 
-    // =============================================
-    // حساب العمليات الحسابية
-    // =============================================
-    private double evaluateBinaryOp(BinaryOpNode node) {
-        double left  = evaluate(node.left);
-        double right = evaluate(node.right);
+    private double evaluateBinaryOp(ASTNode node) {
+        double left  = evaluate(node.children.get(0));
+        double right = evaluate(node.children.get(1));
+        String operator = (String) node.value;
 
-        switch (node.operator) {
+        switch (operator) {
             case "+": return left + right;
             case "-": return left - right;
             case "*": return left * right;
@@ -135,28 +116,21 @@ public class Interpreter {
                 }
                 return left / right;
             default:
-                throw new RuntimeError("Unknown operator: " + node.operator);
+                throw new RuntimeError("Unknown operator: " + operator);
         }
     }
 
-    // =============================================
-    // حساب العمليات الأحادية (Unary)
-    // مثال: -x أو +x
-    // =============================================
-    private double evaluateUnaryOp(UnaryOpNode node) {
-        double value = evaluate(node.operand);
-        switch (node.operator) {
+    private double evaluateUnaryOp(ASTNode node) {
+        double value = evaluate(node.children.get(0));
+        String operator = (String) node.value;
+        switch (operator) {
             case "-": return -value;
             case "+": return +value;
             default:
-                throw new RuntimeError("Unknown unary operator: " + node.operator);
+                throw new RuntimeError("Unknown unary operator: " + operator);
         }
     }
 
-    // =============================================
-    // Symbol Table: للـ Testing والـ Debugging
-    // Developer #5 ممكن يستخدمها في الـ Tests
-    // =============================================
     public Map<String, Double> getSymbolTable() {
         return symbolTable;
     }
@@ -172,9 +146,6 @@ public class Interpreter {
         return symbolTable.get(name);
     }
 
-    // =============================================
-    // RuntimeError: Exception خاص بالـ Interpreter
-    // =============================================
     public static class RuntimeError extends RuntimeException {
         public RuntimeError(String message) {
             super("[Runtime Error] " + message);
